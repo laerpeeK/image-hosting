@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>图床服务</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .upload-container {
+        background: white;
+        border-radius: 8px;
+        padding: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-bottom: 20px;
+      }
+      .upload-area:hover {
+        border-color: #666;
+        background-color: #f9f9f9;
+      }
+      .upload-area.highlight {
+        border-color: #4caf50;
+        background-color: #e8f5e9;
+      }
+      #fileInput {
+        display: none;
+      }
+      .preview-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 20px;
+      }
+      .preview-item {
+        width: 120px;
+        position: relative;
+      }
+      .preview-img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 4px;
+      }
+      .preview-name {
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 5px;
+      }
+      .remove-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(255, 0, 0, 0.7);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: center;
+      }
+      .folder-input {
+        flex-grow: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .upload-btn {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s;
+      }
+      .upload-btn:hover {
+        background-color: #45a049;
+      }
+      .upload-btn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      #result {
+        margin-top: 30px;
+      }
+      .result-item {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .result-url {
+        word-break: break-all;
+        color: #2196f3;
+        text-decoration: none;
+      }
+      .result-url:hover {
+        text-decoration: underline;
+      }
+      .copy-btn {
+        background: #2196f3;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        margin-left: 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .progress-container {
+        margin-top: 20px;
+      }
+      .progress-bar {
+        height: 20px;
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .progress {
+        height: 100%;
+        background-color: #4caf50;
+        width: 0%;
+        transition: width 0.3s;
+      }
+      /* 切换开关样式 */
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 120px;
+        height: 34px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 34px;
+        padding: 8px;
+        box-sizing: border-box;
+        color: white;
+        font-size: 12px;
+        text-align: right;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: '';
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+
+      input:checked + .slider {
+        background-color: #4caf50;
+        text-align: left;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(86px);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>图床服务</h1>
+
+    <div class="upload-container">
+      <div class="controls">
+        <input
+          type="text"
+          id="folderInput"
+          class="folder-input"
+          placeholder="输入文件夹名称 (可选)"
+        />
+        <label class="switch">
+          <input type="checkbox" id="uuidToggle" checked />
+          <span class="slider">使用随机文件名</span>
+        </label>
+        <button id="uploadBtn" class="upload-btn" disabled>上传图片</button>
+      </div>
+
+      <div id="uploadArea" class="upload-area">
+        <p>点击选择图片或拖放图片到此处</p>
+        <p><small>支持 JPG, PNG, GIF, WEBP 格式，单文件最大5MB</small></p>
+        <input type="file" id="fileInput" accept="image/*" multiple />
+      </div>
+
+      <div class="preview-container" id="previewContainer"></div>
+
+      <div
+        class="progress-container"
+        id="progressContainer"
+        style="display: none"
+      >
+        <p>上传进度:</p>
+        <div class="progress-bar">
+          <div class="progress" id="progressBar"></div>
+        </div>
+        <p id="progressText">准备上传...</p>
+      </div>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+      // DOM元素
+      const fileInput = document.getElementById('fileInput')
+      const uploadBtn = document.getElementById('uploadBtn')
+      const uploadArea = document.getElementById('uploadArea')
+      const previewContainer = document.getElementById('previewContainer')
+      const folderInput = document.getElementById('folderInput')
+      const resultDiv = document.getElementById('result')
+      const progressContainer = document.getElementById('progressContainer')
+      const progressBar = document.getElementById('progressBar')
+      const progressText = document.getElementById('progressText')
+
+      // 存储选择的文件
+      let selectedFiles = []
+
+      // 点击上传区域触发文件选择
+      uploadArea.addEventListener('click', () => {
+        fileInput.click()
+      })
+
+      // 文件选择处理
+      fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files)
+      })
+
+      // 拖放功能
+      ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        uploadArea.addEventListener(eventName, preventDefaults, false)
+      })
+
+      function preventDefaults(e) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+
+      ;['dragenter', 'dragover'].forEach((eventName) => {
+        uploadArea.addEventListener(
+          eventName,
+          () => {
+            uploadArea.classList.add('highlight')
+          },
+          false
+        )
+      })
+      ;['dragleave', 'drop'].forEach((eventName) => {
+        uploadArea.addEventListener(
+          eventName,
+          () => {
+            uploadArea.classList.remove('highlight')
+          },
+          false
+        )
+      })
+
+      uploadArea.addEventListener(
+        'drop',
+        (e) => {
+          const dt = e.dataTransfer
+          const files = Array.from(dt.files).filter((file) =>
+            file.type.startsWith('image/')
+          )
+          handleFiles(files)
+        },
+        false
+      )
+
+      // 处理选择的文件
+      function handleFiles(files) {
+        if (files.length === 0) return
+
+        // 添加到已选文件列表
+        selectedFiles = Array.from(files)
+
+        // 更新上传按钮状态
+        uploadBtn.disabled = selectedFiles.length === 0
+
+        // 显示预览
+        previewContainer.innerHTML = ''
+        selectedFiles.forEach((file, index) => {
+          const reader = new FileReader()
+          reader.onload = (event) => {
+            const previewItem = document.createElement('div')
+            previewItem.className = 'preview-item'
+            previewItem.innerHTML = `
+            <img src="${event.target.result}" class="preview-img" alt="预览">
+            <span class="preview-name">${file.name}</span>
+            <button class="remove-btn" data-index="${index}">×</button>
+          `
+            previewContainer.appendChild(previewItem)
+
+            // 添加删除按钮事件
+            previewItem
+              .querySelector('.remove-btn')
+              .addEventListener('click', (e) => {
+                e.stopPropagation()
+                const index = parseInt(e.target.getAttribute('data-index'))
+                selectedFiles.splice(index, 1)
+                handleFiles(selectedFiles) // 重新渲染
+              })
+          }
+          reader.readAsDataURL(file)
+        })
+      }
+
+      // 上传文件
+      uploadBtn.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) {
+          alert('请先选择图片')
+          return
+        }
+
+        // 显示进度条
+        progressContainer.style.display = 'block'
+        progressBar.style.width = '0%'
+        progressText.textContent = '准备上传...'
+
+        const formData = new FormData()
+        selectedFiles.forEach((file) => {
+          formData.append('images', file)
+        })
+
+        // 是否使用uuid
+        const useUUID = document.getElementById('uuidToggle').checked
+        // 添加文件夹参数
+        const folder = folderInput.value.trim()
+
+        try {
+          const xhr = new XMLHttpRequest()
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100)
+              progressBar.style.width = `${percent}%`
+              progressText.textContent = `上传中: ${percent}% (${selectedFiles.length}个文件)`
+            }
+          }
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              const data = JSON.parse(xhr.responseText)
+              showResult(data)
+            } else {
+              throw new Error(xhr.statusText || '上传失败')
+            }
+          }
+
+          xhr.onerror = () => {
+            throw new Error('网络错误，上传失败')
+          }
+
+          xhr.open(
+            'POST',
+            `/upload-multiple?folder=${folder}&useUUID=${useUUID}`,
+            true
+          )
+          xhr.send(formData)
+        } catch (error) {
+          progressText.textContent = `上传失败: ${error.message}`
+          progressBar.style.backgroundColor = '#f44336'
+          console.error('上传错误:', error)
+        }
+      })
+
+      // 显示上传结果
+      function showResult(data) {
+        progressText.textContent = `上传完成! 成功上传 ${data.count} 个文件`
+
+        resultDiv.innerHTML = `
+        <h2>上传结果 (${data.folder ? '文件夹: ' + data.folder : '根目录'})</h2>
+      `
+
+        data.files.forEach((file) => {
+          const resultItem = document.createElement('div')
+          resultItem.className = 'result-item'
+          resultItem.innerHTML = `
+          <div>
+            <strong>${file.originalName}</strong>
+            <span>(${(file.size / 1024).toFixed(2)} KB)</span>
+          </div>
+          <div style="margin-top: 8px;">
+            <a href="${file.url}" target="_blank" class="result-url">${
+            file.url
+          }</a>
+            <button class="copy-btn" onclick="copyToClipboard('${
+              file.url
+            }')">复制</button>
+          </div>
+          <img src="${
+            file.url
+          }" style="max-width: 200px; margin-top: 10px; display: block;">
+        `
+          resultDiv.appendChild(resultItem)
+        })
+
+        // 重置选择
+        selectedFiles = []
+        previewContainer.innerHTML = ''
+        uploadBtn.disabled = true
+        fileInput.value = ''
+      }
+
+      // 复制到剪贴板
+      window.copyToClipboard = function (text) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            alert('URL已复制到剪贴板!')
+          })
+          .catch((err) => {
+            console.error('复制失败:', err)
+          })
+      }
+    </script>
+  </body>
+</html>
