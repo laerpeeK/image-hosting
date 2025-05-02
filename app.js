@@ -59,8 +59,10 @@ const getBaseUrl = (referer) => {
     return `${url.protocol}//${url.host}` // 确保结尾有/
   } catch (e) {
     // 备用方案（如果Referer无效）
-    console.log(e)
-    return 'https://127.0.0.1' // 默认值
+    const protocol = req.protocol // "http" 或 "https"
+    const host = req.get('host') // 包含域名和端口（如 "example.com:8080"）
+    const baseUrl = `${protocol}://${host}` // 例如 "https://example.com:8080"
+    return `${baseUrl}` // 默认值
   }
 }
 
